@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analysis with LSTM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Log Analysis with LSTM Model</h1>
+            <p>Analyze log files using trained LSTM model to predict next log entries</p>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="card">
+                <h2>Select Log Source</h2>
+                <form method="POST" action="{{ url_for('analyze_log') }}" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="radio-label">
+                            <input type="radio" name="log_source" value="upload" checked>
+                            <span class="radio-custom"></span>
+                            Upload Log File
+                        </label>
+                        <div class="form-section" id="upload-section">
+                            <input type="file" name="file" accept=".log,.txt,.0,.*" class="file-input">
+                            <p class="help-text">Supported formats: .log, .txt, files without extension</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="radio-label">
+                            <input type="radio" name="log_source" value="url">
+                            <span class="radio-custom"></span>
+                            Download from URL
+                        </label>
+                        <div class="form-section" id="url-section" style="display: none;">
+                            <input type="url" name="url" placeholder="https://example.com/logfile.log" class="text-input">
+                            <p class="help-text">Enter the URL to download the log file</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="radio-label">
+                            <input type="radio" name="log_source" value="path">
+                            <span class="radio-custom"></span>
+                            Local File Path
+                        </label>
+                        <div class="form-section" id="path-section" style="display: none;">
+                            <input type="text" name="file_path" placeholder="/path/to/logfile.log" class="text-input">
+                            <p class="help-text">Enter the full path to the log file on the server</p>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Analyze Log File</button>
+                </form>
+            </div>
+
+            <div class="info-card">
+                <h3>ℹ️ How it works</h3>
+                <ol>
+                    <li>Upload or specify your log file</li>
+                    <li>The system parses the log using the same tokenization as the training data</li>
+                    <li>Creates vector representations of each log line</li>
+                    <li>Uses the trained LSTM model to predict the next log line</li>
+                    <li>Compares predictions with actual log lines</li>
+                    <li>Provides accuracy metrics and detailed analysis</li>
+                </ol>
+            </div>
+
+            <div class="requirements-card">
+                <h3>📋 Requirements</h3>
+                <ul>
+                    <li>Log files should be in Kubernetes journal format</li>
+                    <li>Trained model file (log_lstm_model.pth) must be in log_check/ directory</li>
+                    <li>Words dictionary (words.csv) must be in log_check/ directory</li>
+                    <li>Maximum file size: 100MB</li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Handle radio button changes
+        document.querySelectorAll('input[name="log_source"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Hide all sections
+                document.getElementById('upload-section').style.display = 'none';
+                document.getElementById('url-section').style.display = 'none';
+                document.getElementById('path-section').style.display = 'none';
+                
+                // Show selected section
+                if (this.value === 'upload') {
+                    document.getElementById('upload-section').style.display = 'block';
+                } else if (this.value === 'url') {
+                    document.getElementById('url-section').style.display = 'block';
+                } else if (this.value === 'path') {
+                    document.getElementById('path-section').style.display = 'block';
+                }
+            });
+        });
+
+        // File upload validation
+        document.querySelector('input[type="file"]').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file && file.size > 100 * 1024 * 1024) {
+                alert('File size must be less than 100MB');
+                this.value = '';
+            }
+        });
+    </script>
+</body>
+</html> 

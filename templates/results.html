@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analysis Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Log Analysis Results</h1>
+            <p>LSTM Model Prediction Analysis</p>
+        </header>
+
+        <main>
+            <div class="navigation">
+                <a href="{{ url_for('index') }}" class="btn-secondary">← Analyze Another Log</a>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>Total Predictions</h3>
+                    <div class="metric-value">{{ summary.total_predictions }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Vectors Analyzed</h3>
+                    <div class="metric-value">{{ summary.vectors_analyzed }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Binary Accuracy</h3>
+                    <div class="metric-value">{{ "%.2f%%"|format(summary.avg_binary_accuracy * 100) }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Top-K Accuracy</h3>
+                    <div class="metric-value">{{ "%.2f%%"|format(summary.avg_top_k_accuracy * 100) }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Mean Squared Error</h3>
+                    <div class="metric-value">{{ "%.4f"|format(summary.avg_mse) }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Mean Absolute Error</h3>
+                    <div class="metric-value">{{ "%.4f"|format(summary.avg_mae) }}</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Detailed Results</h2>
+                <div class="table-container">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Line #</th>
+                                <th>MSE</th>
+                                <th>MAE</th>
+                                <th>Binary Accuracy</th>
+                                <th>Top-K Accuracy</th>
+                                <th>True Words</th>
+                                <th>Predicted Words</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in results %}
+                            <tr class="result-row">
+                                <td>{{ result.line_number }}</td>
+                                <td>{{ "%.4f"|format(result.mse) }}</td>
+                                <td>{{ "%.4f"|format(result.mae) }}</td>
+                                <td>
+                                    <span class="accuracy-badge {% if result.binary_accuracy > 0.8 %}high{% elif result.binary_accuracy > 0.5 %}medium{% else %}low{% endif %}">
+                                        {{ "%.2f%%"|format(result.binary_accuracy * 100) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="accuracy-badge {% if result.top_k_accuracy > 0.8 %}high{% elif result.top_k_accuracy > 0.5 %}medium{% else %}low{% endif %}">
+                                        {{ "%.2f%%"|format(result.top_k_accuracy * 100) }}
+                                    </span>
+                                </td>
+                                <td>{{ result.true_word_count }}</td>
+                                <td>{{ result.predicted_word_count }}</td>
+                                <td>
+                                    {% if result.binary_accuracy > 0.8 %}
+                                        <span class="status-badge good">✓ Good</span>
+                                    {% elif result.binary_accuracy > 0.5 %}
+                                        <span class="status-badge fair">~ Fair</span>
+                                    {% else %}
+                                        <span class="status-badge poor">✗ Poor</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="insights-card">
+                <h3>🔍 Analysis Insights</h3>
+                <div class="insights-grid">
+                    <div class="insight">
+                        <h4>Model Performance</h4>
+                        <p>
+                            {% if summary.avg_binary_accuracy > 0.8 %}
+                                <span class="good">Excellent</span> - The model shows strong predictive capability with high accuracy.
+                            {% elif summary.avg_binary_accuracy > 0.5 %}
+                                <span class="fair">Good</span> - The model performs reasonably well but has room for improvement.
+                            {% else %}
+                                <span class="poor">Poor</span> - The model struggles with predictions. Consider retraining or data quality issues.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="insight">
+                        <h4>Error Analysis</h4>
+                        <p>
+                            Mean Squared Error: {{ "%.4f"|format(summary.avg_mse) }}<br>
+                            Mean Absolute Error: {{ "%.4f"|format(summary.avg_mae) }}
+                        </p>
+                    </div>
+                    <div class="insight">
+                        <h4>Prediction Quality</h4>
+                        <p>
+                            Top-K accuracy shows how often the true words appear in the top 10 predictions.
+                            Current average: {{ "%.2f%%"|format(summary.avg_top_k_accuracy * 100) }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h3>📥 Export Results</h3>
+                <button onclick="exportToCSV()" class="btn-secondary">Export to CSV</button>
+                <button onclick="window.print()" class="btn-secondary">Print Report</button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function exportToCSV() {
+            const rows = [
+                ['Line Number', 'MSE', 'MAE', 'Binary Accuracy', 'Top-K Accuracy', 'True Words', 'Predicted Words']
+            ];
+            
+            {% for result in results %}
+            rows.push([
+                {{ result.line_number }},
+                {{ result.mse }},
+                {{ result.mae }},
+                {{ result.binary_accuracy }},
+                {{ result.top_k_accuracy }},
+                {{ result.true_word_count }},
+                {{ result.predicted_word_count }}
+            ]);
+            {% endfor %}
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            rows.forEach(function(rowArray) {
+                let row = rowArray.join(",");
+                csvContent += row + "\r\n";
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "log_analysis_results.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Add sorting functionality to table
+        document.querySelectorAll('.results-table th').forEach(header => {
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => {
+                const table = header.closest('table');
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const headerIndex = Array.from(header.parentNode.children).indexOf(header);
+                
+                rows.sort((a, b) => {
+                    const aVal = a.children[headerIndex].textContent;
+                    const bVal = b.children[headerIndex].textContent;
+                    
+                    if (!isNaN(aVal) && !isNaN(bVal)) {
+                        return parseFloat(aVal) - parseFloat(bVal);
+                    }
+                    return aVal.localeCompare(bVal);
+                });
+                
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+    </script>
+</body>
+</html> 
